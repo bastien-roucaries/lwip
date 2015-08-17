@@ -1320,6 +1320,9 @@ event_callback(struct netconn *conn, enum netconn_evt evt, u16_t len)
   /* At this point, SYS_ARCH is still protected! */
 again:
   for (scb = select_cb_list; scb != NULL; scb = scb->next) {
+    // CHIBIOS FIX.
+    last_select_cb_ctr = select_cb_ctr;
+    // END CHIBIOS FIX.
     if (scb->sem_signalled == 0) {
       /* semaphore not signalled yet */
       int do_signal = 0;
@@ -1343,11 +1346,16 @@ again:
         scb->sem_signalled = 1;
         /* Don't call SYS_ARCH_UNPROTECT() before signaling the semaphore, as this might
            lead to the select thread taking itself off the list, invalidagin the semaphore. */
-        sys_sem_signal(&scb->sem);
+        /* CHIBIOS FIX: specific variant of this call to be called from within
+           a lock.*/
+/*        sys_sem_signal(&scb->sem);*/
+        sys_sem_signal_S(&scb->sem);
       }
     }
     /* unlock interrupts with each step */
-    last_select_cb_ctr = select_cb_ctr;
+// CHIBIOS FIX.
+//    last_select_cb_ctr = select_cb_ctr;
+// END CHIBIOS FIX.
     SYS_ARCH_UNPROTECT(lev);
     /* this makes sure interrupt protection time is short */
     SYS_ARCH_PROTECT(lev);
